@@ -46,8 +46,8 @@ class GroqClient(ProviderClient):
         return response.choices[0].message.content
 
 class OpenRouterClient(ProviderClient):
-    def __init__(self, api_key: str):
-        super().__init__('openrouter', api_key, 'https://openrouter.ai/api/v1', 'tngtech/deepseek-r1t2-chimera:free')
+    def __init__(self, api_key: str, model: str):
+        super().__init__('openrouter', api_key, 'https://openrouter.ai/api/v1', model)
     
     async def chat(self, message: str) -> str:
         from openai import OpenAI
@@ -89,13 +89,29 @@ class MultiAPIClient:
             self.providers['groq'] = GroqClient(os.getenv('GROQ_API_KEY'))
             
         if os.getenv('OPENROUTER_API_KEY'):
-            self.providers['openrouter'] = OpenRouterClient(os.getenv('OPENROUTER_API_KEY'))
+            models_str = os.getenv('OPENROUTER_MODELS', 'tngtech/deepseek-r1t2-chimera:free')
+            models = [m.strip() for m in models_str.split(',')]
+            for i, model in enumerate(models):
+                self.providers[f'openrouter_{i}'] = OpenRouterClient(os.getenv('OPENROUTER_API_KEY'), model)
             
         if os.getenv('GOOGLE_API_KEY'):
             self.providers['gemini'] = GeminiClient(os.getenv('GOOGLE_API_KEY'))
             
-        self.provider_order = ['groq', 'openrouter', 'gemini']
-        self.rpm_limits = {'groq': 50, 'openrouter': 30, 'gemini': 12}
+        self.provider_order = []
+        # Add groq if available
+        if 'groq' in self.providers:
+            self.provider_order.append('groq')
+        # Add all openrouter models
+        openrouter_providers = [p for p in self.providers.keys() if p.startswith('openrouter_')]
+        self.provider_order.extend(openrouter_providers)
+        # Add gemini if available
+        if 'gemini' in self.providers:
+            self.provider_order.append('gemini')
+        
+        # Set RPM limits - use the same limit for all openrouter models
+        self.rpm_limits = {'groq': 50, 'gemini': 12}
+        for p in openrouter_providers:
+            self.rpm_limits[p] = 30
         self.session_context: Dict[str, Dict] = {}
         
     async def generate_response(self, session_id: str, message: str) -> Tuple[str, Optional[str]]:
