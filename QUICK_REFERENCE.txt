@@ -1,0 +1,86 @@
+"""
+🎯 TIER-BASED ROUTING QUICK REFERENCE
+=====================================
+
+CLASSIFICATION LOGIC:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Tier      | Criteria                          | Priority Order
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🟢 SIMPLE | • <15 words + basic keywords      | Llama 3.2 → WizardLM → DeepSeek
+          | • Greetings, definitions          | → Gemini → Groq
+          | • Simple facts                    |
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🟡 MEDIUM | • 15-50 words                     | DeepSeek → Gemini → Llama 3.2
+          | • Analytical keywords             | → Groq
+          | • Multi-step explanations         |
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔴 COMPLEX| • >50 words OR complexity kws     | Groq (70B) → Gemini → DeepSeek
+          | • Detailed reasoning              | → WizardLM → Llama 3.2
+          | • Architecture/planning           |
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+KEYWORD TRIGGERS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🟢 Simple:  what is | define | hello | time | date | capital
+🟡 Medium:  explain | compare | how to | list | describe | why
+🔴 Complex: analyze deeply | step-by-step | pros and cons | 
+           comprehensive | architecture | scalable
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+PROVIDER SPECS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ID              | Model                | RPM | Best For
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+openrouter_0    | DeepSeek Chimera     | 30  | Balanced queries
+openrouter_1    | Llama 3.2 3B         | 30  | Fast & simple
+openrouter_2    | WizardLM 8x22B       | 30  | Quality light
+gemini          | Gemini 2.0 Flash     | 12  | Reliable backup
+groq            | Llama 3.3 70B        | 50  | Complex reasoning
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+RESPONSE TIME TARGETS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🟢 Simple:   0.5 - 1.5s  (Llama 3.2, WizardLM)
+🟡 Medium:   1.0 - 3.0s  (DeepSeek, Gemini)
+🔴 Complex:  2.0 - 5.0s  (Groq 70B, Gemini)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+EXAMPLE QUERIES:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🟢 "What is Python?"              → openrouter_1 (0.8s)
+🟢 "Hello!"                       → openrouter_1 (0.5s)
+🟡 "Explain machine learning"     → openrouter_0 (1.9s)
+🟡 "Compare React vs Vue"         → openrouter_0 (2.1s)
+🔴 "Build microservices plan..."  → groq (3.4s)
+🔴 "Analyze deeply the trade..."  → groq (4.2s)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+CONFIGURATION FILES:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📄 .env                    → Model list & API keys
+📄 multi_api_client.py     → Core routing logic
+📄 TIER_ROUTING_GUIDE.md   → Full documentation
+📄 test_tier_routing.py    → Classification tests
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+TESTING:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+python test_tier_routing.py  # Run classification tests
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+KEY BENEFITS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ Cost Optimization    → Simple queries use free light models
+✅ Speed Optimization   → Fast responses for common questions
+✅ Quality Assurance    → Complex queries get premium models
+✅ High Reliability     → Multi-tier failover system
+✅ Smart Rate Limiting  → Automatic RPM management
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+"""
