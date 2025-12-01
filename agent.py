@@ -10,12 +10,10 @@ from telegram.ext import (
     ContextTypes,
     MessageHandler,
     filters,
-    ConversationHandler,
 )
-from sheets_handler import GoogleSheetsManager
-from utils import generate_cmid
 from dotenv import load_dotenv
 from multi_api_client import MultiAPIClient
+from tech_news import tech_news_fetcher
 
 # Load environment variables
 load_dotenv()
@@ -35,13 +33,6 @@ if not TOKEN:
 
 # Initialize Multi-API Client
 api_client = MultiAPIClient()
-
-# Conversation States
-NAME, SERVICE, DETAILS = range(3)
-CHECK_CMID = 0
-
-# Initialize Sheets Manager
-sheets_manager = GoogleSheetsManager()
 
 # Load Persona
 try:
@@ -70,13 +61,17 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_name = user.first_name if user else "there"
     
     welcome_msg = (
-        f"Hello {user_name}! 👋🏻\n"
-        f"I am DodoAi - Codiverse Support Specialist.\n\n"
-        f"I can help you start a new project or check the status of an existing one.\n\n"
-        f"What would you like to do?"
+        f"Hello {user_name}! 👋\n"
+        f"I am Codiverse TechBot - Your Tech & Coding Assistant.\n\n"
+        f"I can help you with:\n"
+        f"💻 Coding help & debugging\n"
+        f"📰 Latest tech news & trends\n"
+        f"🔧 Tech troubleshooting\n"
+        f"🚀 Development tips & best practices\n\n"
+        f"What would you like to explore?"
     )
     
-    reply_keyboard = [["🚀 Start New Project", "🔍 Check Project Status"], ["❓ Help", "🌐 Visit Website"]]
+    reply_keyboard = [["📰 Tech News", "💻 Coding Help"], ["🔥 Trending", "❓ Help"]]
     
     await update.message.reply_text(
         welcome_msg,
@@ -89,13 +84,24 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     help_text = (
-        "Here's how I can help:\n\n"
-        "🚀 **Start New Project**: I'll collect your requirements and assign you a Member ID (CMID).\n"
-        "🔍 **Check Project Status**: Use your CMID to track progress.\n"
-        "🌐 **Visit Website**: Learn more about Codiverse.\n\n"
-        "Just type your query or select an option from the menu!"
+        "**🤖 Codiverse TechBot - Your Tech Companion**\n\n"
+        "**📰 News Commands:**\n"
+        "/news - Top tech news (Hacker News + RapidAPI)\n"
+        "/news coding - Latest coding articles from DEV.to\n"
+        "/news python - Python-specific news\n"
+        "/news javascript - JavaScript news\n"
+        "/news rapidapi - Tech news from RapidAPI\n"
+        "/github - Trending GitHub repositories\n\n"
+        "**💻 Coding Help:**\n"
+        "Ask me about any programming language, debugging, or code review\n\n"
+        "**🔥 Trending:**\n"
+        "/trending - Hot topics in tech right now\n\n"
+        "**Other Commands:**\n"
+        "/stats - Bot usage statistics\n"
+        "/help - Show this help message\n\n"
+        "Just type your question or select from the menu!"
     )
-    await update.message.reply_text(help_text)
+    await update.message.reply_text(help_text, parse_mode='Markdown')
 
 async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Admin stats command"""
@@ -114,145 +120,46 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await update.message.reply_text(f"Error fetching stats: {e}")
 
-async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Cancels and ends the conversation."""
+async def news_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Fetches latest tech news"""
     if not update.message:
-        return ConversationHandler.END
+        return
     
-    await update.message.reply_text(
-        "Operation cancelled. How else can I help you?",
-        reply_markup=ReplyKeyboardRemove(),
-    )
-    return ConversationHandler.END
+    # Get category from command args or default to general
+    category = " ".join(context.args) if context.args else "general"
+    count = 10
+    
+    await update.message.reply_text(f"🔍 Fetching latest {category} news... Please wait.")
+    
+    try:
+        news_items = await tech_news_fetcher.get_tech_news(category, count)
+        message = tech_news_fetcher.format_news_message(news_items, category)
+        await update.message.reply_text(message, parse_mode='Markdown', disable_web_page_preview=True)
+    except Exception as e:
+        logger.error(f"Error fetching news: {e}")
+        await update.message.reply_text("Sorry, I couldn't fetch the news right now. Please try again later.")
 
-# --- New Project Conversation Flow ---
-
-async def start_project(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Starts the new project flow."""
+async def trending_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Shows trending repositories on GitHub"""
     if not update.message:
-        return ConversationHandler.END
+        return
     
-    await update.message.reply_text(
-        "Great! Let's get your project started. 🚀\n\n"
-        "First, could you please tell me your **Full Name**?",
-        reply_markup=ReplyKeyboardRemove(),
-    )
-    return NAME
+    language = " ".join(context.args) if context.args else ""
+    await update.message.reply_text(f"🔥 Fetching trending {'repositories' if not language else f'{language} projects'}... Please wait.")
+    
+    try:
+        trending = await tech_news_fetcher.get_github_trending(language, 10)
+        message = tech_news_fetcher.format_news_message(trending, f"Trending {language.title() if language else 'GitHub'}")
+        await update.message.reply_text(message, parse_mode='Markdown', disable_web_page_preview=True)
+    except Exception as e:
+        logger.error(f"Error fetching trending: {e}")
+        await update.message.reply_text("Sorry, I couldn't fetch trending repos right now. Please try again later.")
 
-async def get_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Collects name and asks for service type."""
-    if not update.message or not update.message.text or not context.user_data:
-        return ConversationHandler.END
-    
-    context.user_data["name"] = update.message.text
-    
-    reply_keyboard = [["📱 Mobile App", "💻 Website"], ["🤖 AI/Automation", "🎨 Design/Branding"]]
-    
-    await update.message.reply_text(
-        f"Nice to meet you, {context.user_data['name']}! \n\n"
-        "What kind of service are you looking for?",
-        reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True),
-    )
-    return SERVICE
-
-async def get_service(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Collects service type and asks for details."""
-    if not update.message or not update.message.text or not context.user_data:
-        return ConversationHandler.END
-    
-    context.user_data["service"] = update.message.text
-    
-    await update.message.reply_text(
-        "Got it. Please describe your project requirements in detail.\n"
-        "Include things like features, target audience, or any specific ideas you have.",
-        reply_markup=ReplyKeyboardRemove(),
-    )
-    return DETAILS
-
-async def get_details(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Collects details, saves to Sheet, and generates CMID."""
-    if not update.message or not update.message.text or not context.user_data:
-        return ConversationHandler.END
-    
-    details = update.message.text
-    name = context.user_data.get("name")
-    service = context.user_data.get("service")
-    
-    if not name or not service:
-        await update.message.reply_text("Error: Missing information. Please start over with /start")
-        return ConversationHandler.END
-    
-    await update.message.reply_text("Thank you! Processing your request... ⏳")
-    
-    # Generate CMID
-    cmid = generate_cmid()
-    
-    # Save to Google Sheets
-    success = sheets_manager.add_lead(cmid, name, service, details)
-    
-    if success:
-        await update.message.reply_text(
-            f"✅ **Request Received Successfully!**\n\n"
-            f"Here is your **Codiverse Member ID (CMID)**:\n`{cmid}`\n\n"
-            f"⚠️ **Please save this ID safely.** You will need it to check your project status in the future.\n\n"
-            f"Our team will review your requirements and get back to you shortly!",
-            parse_mode="Markdown"
-        )
-    else:
-        await update.message.reply_text(
-            "❌ **Oops! Something went wrong.**\n"
-            "I couldn't save your request at the moment. Please try again later or contact support."
-        )
-    
-    return ConversationHandler.END
-
-# --- Status Check Conversation Flow ---
-
-async def check_status_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Starts the status check flow."""
-    if not update.message:
-        return ConversationHandler.END
-    
-    await update.message.reply_text(
-        "Sure, I can check that for you. 🔍\n\n"
-        "Please enter your **Codiverse Member ID (CMID)**:",
-        reply_markup=ReplyKeyboardRemove(),
-    )
-    return CHECK_CMID
-
-async def get_cmid_status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Looks up the CMID and returns status."""
-    if not update.message or not update.message.text:
-        return ConversationHandler.END
-    
-    cmid = update.message.text.strip()
-    
-    await update.message.reply_text("Searching records... ⏳")
-    
-    result = sheets_manager.get_status(cmid)
-    
-    if result:
-        response = (
-            f"📋 **Project Status for {cmid}**\n\n"
-            f"👤 **Name:** {result['name']}\n"
-            f"🛠 **Service:** {result['service']}\n"
-            f"📊 **Current Status:** {result['status']}\n"
-            f"📅 **Last Updated:** {result['timestamp']}\n\n"
-            f"If you have further questions, feel free to ask!"
-        )
-        await update.message.reply_text(response, parse_mode="Markdown")
-    else:
-        await update.message.reply_text(
-            f"❌ **CMID Not Found**\n\n"
-            f"I couldn't find any project with ID `{cmid}`.\n"
-            f"Please check if you typed it correctly.",
-            parse_mode="Markdown"
-        )
-        
-    return ConversationHandler.END
+async def github_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Shows trending GitHub repositories"""
+    await trending_command(update, context)
 
 # --- General Message Handler ---
-
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handles general messages using Multi-API Client with Failover."""
     if not update.message or not update.message.text or not update.effective_chat:
@@ -267,7 +174,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Construct System Prompt
     system_prompt = f"""
-    You are Dodo AI, the support specialist for Codiverse.
+    You are Codiverse TechBot, a tech and coding assistant.
     
     **Your Persona:**
     {json.dumps(PERSONA, indent=2)}
@@ -276,10 +183,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     {json.dumps(FAQ_DATA, indent=2)}
     
     **Instructions:**
-    - Answer the user's question based on the Persona and FAQ.
-    - Be professional, friendly, and helpful.
-    - If the answer is not in the FAQ, politely suggest they contact support or visit the website.
-    - Keep responses concise and relevant to Telegram chat.
+    - Answer coding, tech, and development questions with precision and clarity.
+    - Provide code examples when appropriate.
+    - Explain technical concepts in an accessible way.
+    - If the answer is not in your knowledge base, provide best practices or suggest resources.
+    - Keep responses concise and well-formatted for Telegram chat.
+    - For news requests, redirect to /news command.
     """
     
     # Combine system prompt and user message
@@ -315,33 +224,23 @@ if __name__ == "__main__":
     app = Application.builder().token(TOKEN).build()
 
     # Conversation Handler for New Project
-    project_conv = ConversationHandler(
-        entry_points=[MessageHandler(filters.Regex("^🚀 Start New Project$"), start_project)],
-        states={
-            NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_name)],
-            SERVICE: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_service)],
-            DETAILS: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_details)],
-        },
-        fallbacks=[CommandHandler("cancel", cancel)],
-    )
-
+    # Removed - No longer collecting project data
+    
     # Conversation Handler for Status Check
-    status_conv = ConversationHandler(
-        entry_points=[MessageHandler(filters.Regex("^🔍 Check Project Status$"), check_status_start)],
-        states={
-            CHECK_CMID: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_cmid_status)],
-        },
-        fallbacks=[CommandHandler("cancel", cancel)],
-    )
+    # Removed - No longer tracking status
 
     # Commands
     app.add_handler(CommandHandler("start", start_command))
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("stats", stats_command))
+    app.add_handler(CommandHandler("news", news_command))
+    app.add_handler(CommandHandler("trending", trending_command))
+    app.add_handler(CommandHandler("github", github_command))
     
-    # Conversations
-    app.add_handler(project_conv)
-    app.add_handler(status_conv)
+    # Button handlers for quick access
+    app.add_handler(MessageHandler(filters.Regex("^📰 Tech News$"), lambda u, c: news_command(u, c)))
+    app.add_handler(MessageHandler(filters.Regex("^🔥 Trending$"), lambda u, c: trending_command(u, c)))
+    app.add_handler(MessageHandler(filters.Regex("^💻 Coding Help$"), lambda u, c: help_command(u, c)))
 
     # General Messages (Fallback)
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
