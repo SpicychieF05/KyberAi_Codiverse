@@ -1,81 +1,156 @@
-# DodoAi - Codiverse Telegram Chatbot
+# 🤖 Kyber - Advanced AI Tech Companion
 
-DodoAi is a smart support specialist bot for Codiverse on Telegram. It helps users start new projects, check project status, and answers general queries using AI.
+![Kyber Bot Banner](https://img.shields.io/badge/Status-Online-brightgreen?style=for-the-badge) ![Python](https://img.shields.io/badge/Python-3.10%2B-blue?style=for-the-badge) ![Telegram](https://img.shields.io/badge/Telegram-Bot-blue?style=for-the-badge)
 
-## Features
+**Kyber** (pronounced _Kai-ber_) is a sophisticated Telegram chatbot designed to be your ultimate coding assistant and tech news aggregator. It leverages a **Multi-LLM Architecture** to intelligently route your queries to the best available AI model, ensuring high-quality responses while optimizing for speed and cost (running entirely on free tiers!).
 
-- **🎯 Intelligent AI Routing**: Tier-based query classification system that automatically selects the most appropriate AI model based on query complexity (Simple/Medium/Complex)
-- **🚀 Multi-Model Support**: Seamlessly integrates multiple AI providers (Groq, OpenRouter, Gemini) with automatic failover
-- **💡 Cost Optimization**: Smart routing uses lightweight models for simple queries and premium models only for complex reasoning
-- **⚡ Speed Optimization**: Fast responses (<1s) for simple queries using optimized 3B parameter models
-- **🛡️ High Reliability**: Multi-tier fallback system ensures 99%+ uptime with automatic rate limit management
-- **Lead Generation**: Collects user project details and saves them directly to Google Sheets
-- **Project Tracking**: Generates a unique Codiverse Member ID (CMID) for users to track their project status
+---
 
-## Setup
+## 🧠 Intelligent Multi-Model Brain
 
-1.  **Clone the repository:**
+Kyber isn't just a wrapper for one AI. It uses a smart routing system to select the perfect "brain" for your specific question:
+
+```mermaid
+graph TD
+    User[👤 User Query] --> Router{🧠 Complexity Analyzer}
+
+    Router -- "Simple (Greetings, Facts)" --> Fast[⚡ Fast Tier]
+    Router -- "Medium (Explain, Compare)" --> Balanced[⚖️ Balanced Tier]
+    Router -- "Complex (Code, Analysis)" --> Powerful[🚀 Powerful Tier]
+
+    subgraph "AI Providers (Free Tier)"
+        Fast --> Gemini[Gemini 2.0 Flash]
+        Fast --> Llama[Llama 3.2 3B]
+
+        Balanced --> DeepSeek[DeepSeek Chat]
+        Balanced --> Groq[Llama 3.3 70B]
+
+        Powerful --> DeepSeek
+        Powerful --> Groq
+        Powerful --> Gemma[Gemma 2 9B]
+    end
+
+    Gemini --> Response[💬 Final Response]
+    Llama --> Response
+    DeepSeek --> Response
+    Groq --> Response
+    Gemma --> Response
+```
+
+### 🌟 Key Features
+
+- **⚡ Smart Routing**: Automatically detects if your query needs a quick answer or deep reasoning.
+- **🛡️ Failover System**: If one AI provider is down or rate-limited, Kyber instantly switches to the next available one without you noticing.
+- **📰 Tech News Hub**: Fetches the latest headlines from **Hacker News**, **Dev.to**, and **GitHub Trending**.
+- **💻 Coding Expert**: Specialized in Python, JavaScript, and general software architecture.
+- **🗣️ Context Aware**: Remembers your conversation context for natural follow-up questions.
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Python 3.10 or higher
+- A Telegram Bot Token (from [@BotFather](https://t.me/BotFather))
+- API Keys for the AI providers (all offer free tiers)
+
+### 🛠️ Installation
+
+1.  **Clone the repository**
 
     ```bash
-    git clone https://github.com/SpicychieF05/DodoAi_Codiverse.git
-    cd DodoAi_Codiverse
+    git clone https://github.com/SpicychieF05/KyberAi_Codiverse.git
+    cd KyberAi_Codiverse
     ```
 
-2.  **Install dependencies:**
+2.  **Create a Virtual Environment**
+
+    ```bash
+    python -m venv .venv
+    # Windows
+    .venv\Scripts\Activate
+    # Mac/Linux
+    source .venv/bin/activate
+    ```
+
+3.  **Install Dependencies**
 
     ```bash
     pip install -r requirements.txt
     ```
 
-3.  **Configure Environment:**
-    Create a `.env` file with the following keys:
-    ```env
+4.  **Configure Environment**
+    Create a `.env` file in the root directory:
+
+    ```ini
+    # Telegram
     TELEGRAM_BOT_TOKEN=your_telegram_bot_token
-    
-    # Multi-model configuration
-    GROQ_API_KEY=your_groq_api_key
-    OPENROUTER_API_KEY=your_openrouter_api_key
-    OPENROUTER_MODELS=model1:free,model2:free,model3:free
-    GOOGLE_API_KEY=your_gemini_api_key
-    
-    # Google Sheets integration
-    GOOGLE_SHEETS_CREDENTIALS=your_base64_encoded_service_account_json
-    LEADS_SHEETS_SPREADSHEET_ID=your_spreadsheet_id
+
+    # AI Providers (Free Tiers)
+    GOOGLE_API_KEY=your_gemini_key
+    GROQ_API_KEY=your_groq_key
+    DEEPSEEK_API_KEY=your_deepseek_key
+    OPENROUTER_API_KEY=your_openrouter_key
+
+    # Configuration
+    DEEPSEEK_BASE_URL=https://api.deepseek.com
+    OPENROUTER_MODELS=tngtech/deepseek-r1t2-chimera:free,meta-llama/llama-3.2-3b-instruct:free,google/gemma-2-9b-it:free
     ```
 
-## 🎯 Tier-Based Routing System
+5.  **Run the Bot**
+    ```bash
+    python agent.py
+    ```
 
-The bot uses an intelligent query classification system to route requests efficiently:
+---
 
-### Query Complexity Tiers
+## 🤖 Usage Guide
 
-| Tier | Characteristics | Priority Models | Response Time |
-|------|----------------|-----------------|---------------|
-| 🟢 **Simple** | <15 words, basic questions, greetings | Llama 3.2 3B → WizardLM → DeepSeek | 0.5-1.5s |
-| 🟡 **Medium** | 15-50 words, explanations, comparisons | DeepSeek → Gemini → Llama 3.2 | 1-3s |
-| 🔴 **Complex** | >50 words, detailed reasoning, planning | Groq (70B) → Gemini → DeepSeek | 2-5s |
+Once the bot is running, find it on Telegram and click **Start**.
 
-### Examples
+### 📝 Commands
 
-```python
-# Simple query → Routes to Llama 3.2 3B
-"What is Python?"
+| Command        | Description                               |
+| :------------- | :---------------------------------------- |
+| `/start`       | Initialize the bot and see the main menu. |
+| `/help`        | Show the list of available commands.      |
+| `/news`        | Get top tech news headlines.              |
+| `/news python` | Get specific news (e.g., for Python).     |
+| `/trending`    | See trending repositories on GitHub.      |
+| `/github`      | Alias for trending.                       |
 
-# Medium query → Routes to DeepSeek
-"Explain how async/await works in Python"
+### 💬 Chatting
 
-# Complex query → Routes to Groq Llama 3.3 70B
-"Provide a comprehensive analysis with step-by-step reasoning..."
+Just type your question!
+
+- _"Explain how async/await works in Python"_ -> **Routed to DeepSeek/Groq** (Complex)
+- _"What time is it?"_ -> **Routed to Gemini** (Simple)
+- _"Write a React component for a Navbar"_ -> **Routed to DeepSeek/Gemma** (Coding)
+
+---
+
+## 📂 Project Structure
+
+```
+Dodo_Codiverse_Teligram_Chatbot/
+├── agent.py                # 🤖 Main bot entry point & Telegram handlers
+├── multi_api_client.py     # 🧠 The "Brain" - Handles routing & API calls
+├── tech_news.py            # 📰 News fetcher (HackerNews, GitHub, etc.)
+├── faq_data.json           # 📚 Static knowledge base
+├── persona.json            # 🎭 Bot personality definition
+├── requirements.txt        # 📦 Python dependencies
+└── .env                    # 🔑 Secrets & Config (Not committed)
 ```
 
-**📚 Full Documentation**: See [TIER_ROUTING_GUIDE.md](TIER_ROUTING_GUIDE.md) for complete details
+---
 
-**🧪 Testing**: Run `python test_tier_routing.py` or `python simulate_routing.py`
+## 🛠️ Troubleshooting
 
-## Usage
+- **Conflict Error**: If you see `Conflict: terminated by other getUpdates request`, it means another instance of the bot is running. Stop all python processes and restart.
+- **Rate Limits**: The bot handles rate limits automatically by switching providers. If all are exhausted, it will ask you to wait a moment.
 
-Run the bot:
+---
 
-```bash
-python agent.py
-```
+**Built with ❤️ by the Codiverse Team**
+[@Chirantan Mallick](https://github.com/SpicychieF05)
