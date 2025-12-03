@@ -231,8 +231,21 @@ if __name__ == "__main__":
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
     # Errors
+    # Errors
     app.add_error_handler(error)
 
-    # Polls the bot
-    print("Polling...")
-    app.run_polling(poll_interval=3)
+    # Check for Webhook configuration
+    WEBHOOK_URL = os.getenv("WEBHOOK_URL")
+    PORT = int(os.getenv("PORT", "8443"))
+
+    if WEBHOOK_URL:
+        print(f"Starting webhook on port {PORT}...")
+        app.run_webhook(
+            listen="0.0.0.0",
+            port=PORT,
+            url_path=TOKEN,
+            webhook_url=f"{WEBHOOK_URL}/{TOKEN}"
+        )
+    else:
+        print("Polling...")
+        app.run_polling(poll_interval=3)
