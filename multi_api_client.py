@@ -91,6 +91,28 @@ class GeminiClient(ProviderClient):
             raise ValueError("Gemini API returned empty response")
         return response.text
 
+class DeepSeekClient(ProviderClient):
+    def __init__(self, api_key: str, base_url: str):
+        super().__init__('deepseek', api_key, base_url, 'deepseek-chat')
+    
+    async def chat(self, message: str) -> str:
+        from openai import OpenAI
+        client = OpenAI(
+            base_url=self.base_url,
+            api_key=self.api_key,
+        )
+        self.call_history.append(time.time())
+        response = await asyncio.to_thread(
+            client.chat.completions.create,
+            model=self.model,
+            messages=[{"role": "user", "content": message}],
+            max_tokens=1000
+        )
+        content = response.choices[0].message.content
+        if content is None:
+            raise ValueError("DeepSeek API returned None content")
+        return content
+
 class MultiAPIClient:
     def __init__(self):
         # Initialize providers with keys from .env
@@ -120,6 +142,14 @@ class MultiAPIClient:
                 self.providers['gemini'] = GeminiClient(google_key)
             except Exception as e:
                 print(f"⚠️ Failed to initialize Gemini: {e}")
+
+        deepseek_key = os.getenv('DEEPSEEK_API_KEY')
+        if deepseek_key:
+            try:
+                base_url = os.getenv('DEEPSEEK_BASE_URL', 'https://api.deepseek.com')
+                self.providers['deepseek'] = DeepSeekClient(deepseek_key, base_url)
+            except Exception as e:
+                print(f"⚠️ Failed to initialize DeepSeek: {e}")
             
         self.provider_order = []
         # Add groq if available
@@ -131,6 +161,8 @@ class MultiAPIClient:
         # Add gemini if available
         if 'gemini' in self.providers:
             self.provider_order.append('gemini')
+        if 'deepseek' in self.providers:
+            self.provider_order.append('deepseek')
         
         # Set RPM limits - use the same limit for all openrouter models
         self.rpm_limits = {}
@@ -138,6 +170,8 @@ class MultiAPIClient:
             self.rpm_limits['groq'] = 50
         if 'gemini' in self.providers:
             self.rpm_limits['gemini'] = 12
+        if 'deepseek' in self.providers:
+            self.rpm_limits['deepseek'] = 50
         for p in openrouter_providers:
             self.rpm_limits[p] = 30
         
@@ -161,6 +195,8 @@ class MultiAPIClient:
                 simple_tier.append(p)
         if 'gemini' in self.providers:
             simple_tier.append('gemini')
+        if 'deepseek' in self.providers:
+            simple_tier.append('deepseek')
         if 'groq' in self.providers:
             simple_tier.append('groq')
         
@@ -178,6 +214,8 @@ class MultiAPIClient:
                 medium_tier.append(p)
         if 'groq' in self.providers:
             medium_tier.append('groq')
+        if 'deepseek' in self.providers:
+            medium_tier.append('deepseek')
         
         # Complex: premium models for detailed reasoning
         complex_tier = []
@@ -185,6 +223,8 @@ class MultiAPIClient:
             complex_tier.append('groq')
         if 'gemini' in self.providers:
             complex_tier.append('gemini')
+        if 'deepseek' in self.providers:
+            complex_tier.append('deepseek')
         if 'openrouter_0' in self.providers:
             complex_tier.append('openrouter_0')
         if 'openrouter_2' in self.providers:
